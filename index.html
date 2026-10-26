@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Date-Deck</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Date-Deck">
+<meta name="theme-color" content="#E7ECE9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D1A1E" media="(prefers-color-scheme: dark)">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;600;800&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: eine schmale Spalte, die Sammelkarte steht im Mittelpunkt.
+   Farbe: tiefes Petrol-Grün als Grund, Rosenrot nur für die Ziehen-Taste,
+   die Seltenheitsstufen tragen ihre eigene Farbe, Legendär bekommt Goldfolie. */
+:root {
+  --bg: #E7ECE9;
+  --surface: #F5F8F6;
+  --ink: #12262B;
+  --muted: #4F6569;
+  --line: #C3CFCC;
+  --accent: #D23B57;
+  --accent-ink: #FFFFFF;
+  --back: #12262B;
+  --back-fg: #E7ECE9;
+  --back-line: #35525A;
+  --r0: #5C6F73;
+  --r1: #1D6BB3;
+  --r2: #8238C2;
+  --r3: #9A6A00;
+  --gold-1: #F7D774;
+  --gold-2: #C98F12;
+  --gold-3: #FFF1B8;
+  --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1A1E;
+    --surface: #16282E;
+    --ink: #E5EEEB;
+    --muted: #90A8AA;
+    --line: #28424A;
+    --accent: #FF6F88;
+    --accent-ink: #1A0A0F;
+    --back: #1D3A43;
+    --back-fg: #E5EEEB;
+    --back-line: #3B6873;
+    --r0: #9DB3B5;
+    --r1: #63B2F2;
+    --r2: #C493FF;
+    --r3: #F5C451;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1A1E;
+  --surface: #16282E;
+  --ink: #E5EEEB;
+  --muted: #90A8AA;
+  --line: #28424A;
+  --accent: #FF6F88;
+  --accent-ink: #1A0A0F;
+  --back: #1D3A43;
+  --back-fg: #E5EEEB;
+  --back-line: #3B6873;
+  --r0: #9DB3B5;
+  --r1: #63B2F2;
+  --r2: #C493FF;
+  --r3: #F5C451;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1.5;
+  font-optical-sizing: auto;
+  padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.wrap { max-width: 420px; margin: 0 auto; display: grid; gap: 30px; }
+.wrap > * { min-width: 0; }
+
+.eyebrow, .label, .ctx, .num, .rar, .cat, .meta dt, .hnum, .hmeta, .odds b, .foot {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: 12px;
+}
+.eyebrow { color: var(--accent); margin: 0 0 8px; font-weight: 500; }
+h1 {
+  margin: 0 0 12px;
+  font-size: clamp(44px, 14vw, 60px);
+  line-height: .92;
+  font-weight: 800;
+  letter-spacing: -.025em;
+}
+.lede { margin: 0 0 16px; color: var(--muted); max-width: 34ch; text-wrap: pretty; }
+.ctx {
+  display: inline-block;
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+}
+.label { margin: 0 0 12px; color: var(--muted); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 15px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.play { display: grid; gap: 16px; }
+.stage { display: grid; justify-items: center; perspective: 1400px; }
+.card {
+  width: min(100%, 340px);
+  display: grid;
+  transform-style: preserve-3d;
+  transition: transform .9s cubic-bezier(.2, .7, .2, 1);
+  cursor: default;
+}
+.card.flipped { transform: rotateY(180deg); }
+.card.shake { animation: shake .65s ease-in-out; }
+@keyframes shake {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-3deg) translateY(-4px); }
+  40% { transform: rotate(3deg) translateY(-4px); }
+  60% { transform: rotate(-2deg); }
+  80% { transform: rotate(1.5deg); }
+}
+.face {
+  grid-area: 1 / 1;
+  border-radius: 20px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.back {
+  position: relative;
+  min-height: 430px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  padding: 28px;
+  text-align: center;
+  background-color: var(--back);
+  background-image: repeating-linear-gradient(135deg, transparent 0 16px, color-mix(in srgb, var(--back-fg) 6%, transparent) 16px 17px);
+  color: var(--back-fg);
+  border: 1px solid var(--back-line);
+}
+.back::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border: 1px solid var(--back-line);
+  border-radius: 12px;
+  pointer-events: none;
+}
+.nine {
+  font-size: 172px;
+  line-height: .85;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  color: transparent;
+  -webkit-text-stroke: 2px var(--accent);
+}
+.back .tag { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .32em; font-size: 12px; }
+.back .sub { font-size: 14px; opacity: .75; margin: 0; }
+
+.front {
+  --rc: var(--r0);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 22px 20px;
+  background: var(--surface);
+  border: 2px solid var(--rc);
+  transform: rotateY(180deg);
+}
+.front.r1 { --rc: var(--r1); }
+.front.r2 { --rc: var(--r2); }
+.front.r3 {
+  --rc: var(--r3);
+  border: 3px solid transparent;
+  background-image:
+    linear-gradient(var(--surface), var(--surface)),
+    linear-gradient(115deg, var(--gold-2), var(--gold-1), var(--gold-3), var(--gold-1), var(--gold-2));
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
+  background-size: 100% 100%, 300% 100%;
+  background-position: 0 0, 0% 0;
+  animation: foil 5s linear infinite;
+  box-shadow: 0 14px 50px -12px color-mix(in srgb, var(--gold-2) 60%, transparent);
+}
+.front.r3::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .38) 50%, transparent 65%);
+  transform: translateX(-130%);
+  animation: sheen 2.2s 1s ease-out 1 forwards;
+  pointer-events: none;
+}
+@keyframes foil { to { background-position: 0 0, 100% 0; } }
+@keyframes sheen { to { transform: translateX(130%); } }
+
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.rar { color: var(--rc); font-weight: 500; }
+.num { color: var(--muted); }
+.cat { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
+.cat::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--rc); }
+.title {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.04;
+  font-weight: 800;
+  letter-spacing: -.015em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.desc { margin: 0; text-wrap: pretty; }
+.meta { margin: auto 0 0; display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.meta div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.meta dt { color: var(--muted); }
+.meta dd { margin: 0; text-align: right; font-size: 14px; }
+
+.pull {
+  width: 100%;
+  min-height: 54px;
+  padding: 14px 16px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.pull:active:not([disabled]) { transform: translateY(1px); }
+.pull[disabled] { background: transparent; color: var(--muted); border: 1px dashed var(--line); cursor: default; }
+
+.status { display: grid; justify-items: center; gap: 10px; text-align: center; color: var(--muted); font-size: 15px; min-height: 24px; }
+.status p { margin: 0; max-width: 34ch; text-wrap: pretty; }
+.ghost {
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 14px;
+  background: none;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.odds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.odds div { display: grid; gap: 2px; padding: 6px 12px; border-left: 3px solid var(--rc); font-size: 15px; }
+.odds b { font-weight: 500; color: var(--muted); }
+.odds .g0 { --rc: var(--r0); } .odds .g1 { --rc: var(--r1); }
+.odds .g2 { --rc: var(--r2); } .odds .g3 { --rc: var(--r3); }
+
+.hist { border-top: 1px solid var(--line); }
+.hist details { border-bottom: 1px solid var(--line); }
+.hist summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  cursor: pointer;
+  list-style: none;
+}
+.hist summary::-webkit-details-marker { display: none; }
+.hnum { color: var(--muted); }
+.htitle { font-weight: 600; overflow-wrap: anywhere; }
+.ok { font-weight: 400; color: var(--muted); font-size: 14px; }
+.hr { font-size: 12px; letter-spacing: .1em; }
+.hr.r0 { color: var(--r0); } .hr.r1 { color: var(--r1); } .hr.r2 { color: var(--r2); } .hr.r3 { color: var(--r3); }
+.hbody { display: grid; justify-items: start; gap: 10px; padding: 0 0 16px; color: var(--muted); font-size: 15px; }
+.hbody p { margin: 0; }
+.hmeta { font-size: 11px; }
+
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; color: var(--muted); }
+.link { background: none; border: 0; padding: 8px 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; text-transform: inherit; letter-spacing: inherit; }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: none; }
+  .front.r3 { animation: none; }
+  .front.r3::after { display: none; }
+}
+</style>
+
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <p class="eyebrow">Neun Monate</p>
+    <h1>Date-Deck</h1>
+    <p class="lede">Alle zwei Wochen darfst du eine Karte ziehen. Je seltener die Karte, desto größer das Date.</p>
+    <p class="ctx" id="ctx"></p>
+  </header>
+
+  <section id="chipsWrap" aria-labelledby="catlabel">
+    <p class="label" id="catlabel">Worauf hast du Lust?</p>
+    <div class="chips" id="chips" role="group" aria-labelledby="catlabel"></div>
+  </section>
+
+  <section class="play" aria-label="Karte ziehen">
+    <div class="stage">
+      <div class="card" id="card">
+        <div class="face back">
+          <div class="nine" aria-hidden="true">9</div>
+          <div class="tag">Monate</div>
+          <p class="sub">Date-Deck</p>
+        </div>
+        <article class="face front r0" id="front"></article>
+      </div>
+    </div>
+    <button class="pull" id="pull" type="button">Karte ziehen</button>
+    <div class="status" id="status"></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+  </section>
+
+  <section aria-labelledby="oddslabel">
+    <p class="label" id="oddslabel">Seltenheit und Grundchance</p>
+    <div class="odds" id="odds"></div>
+  </section>
+
+  <section id="histWrap" hidden aria-labelledby="histlabel">
+    <p class="label" id="histlabel">Bisher gezogen</p>
+    <div class="hist" id="hist"></div>
+  </section>
+
+  <footer class="foot">
+    <span>Passend zu Jahreszeit und Tageszeit</span>
+    <button class="link" id="reset" type="button">Neu starten</button>
+  </footer>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var DAY = 86400000;
+  var COOLDOWN_DAYS = 14;
+  var KEY = "datedeck.v1";
+
+  /* s = Jahreszeiten (F Frühling, S Sommer, H Herbst, W Winter), fehlt = ganzjährig
+     z = Tageszeit (m morgens, t tagsüber, a abends, n nachts), fehlt = jederzeit
+     m = nur in diesen Monaten (1 bis 12)
+     Neue Karten immer hinten anhängen, die Nummer ergibt sich aus der Reihenfolge. */
+  var RAW = [
+    { c: "out", r: 0, s: "FS", z: "mt", t: "Frühstück im Park", d: "Thermoskanne, Brötchen, zwei Becher und eine Decke. Die Handys bleiben in der Tasche." },
+    { c: "out", r: 0, s: "FHW", z: "ta", t: "Herbstspaziergang mit Kakao", d: "Eine Runde durch Laub und Matsch, jeder mit einem heißen Becher. Ein Ziel gibt es nicht." },
+    { c: "in", r: 0, z: "an", t: "Deckenburg und Filmabend", d: "Alle Kissen und Decken zu einer Burg. Einer wählt den Film, der andere die Snacks." },
+    { c: "eat", r: 0, z: "a", t: "Drei Gänge, zwei Köche", d: "Vorspeise, Hauptgang, Dessert. Ihr lost aus, wer welchen Gang kocht, einer entsteht gemeinsam." },
+    { c: "eat", r: 0, s: "FS", z: "ta", t: "Eis mit Sortentausch", d: "Jeder sucht für den anderen eine Sorte aus und verrät nicht, welche. Probiert wird blind." },
+    { c: "in", r: 0, z: "an", t: "Brettspielabend mit Einsatz", d: "Ein Spiel nach Wahl. Wer verliert, macht am nächsten Morgen das Frühstück." },
+    { c: "out", r: 0, s: "FS", z: "t", t: "Picknick mit Aussicht", d: "Ein Platz mit Blick, Käse, Obst und etwas Süßes. Den Platz sucht ihr erst vor Ort aus." },
+    { c: "eat", r: 0, z: "a", t: "Pizza von Grund auf", d: "Teig selbst kneten, Belag gegenseitig bestimmen. Jeder belegt eine Pizza für den anderen." },
+    { c: "spicy", r: 0, s: "FHW", z: "an", t: "Bad für zwei", d: "Kerzen, eine Playlist, warmes Wasser. Mehr braucht es nicht." },
+    { c: "spicy", r: 0, z: "an", t: "Massage-Tausch", d: "Zwanzig Minuten jeder. Timer stellen, Öl bereitlegen, nicht schummeln." },
+    { c: "out", r: 0, s: "FSH", z: "an", t: "Sterne gucken", d: "Decke, Schlafsäcke und ein dunkler Ort außerhalb der Stadt. Wer die erste Sternschnuppe sieht, darf sich etwas wünschen." },
+    { c: "eat", r: 0, z: "t", t: "Café-Hopping", d: "Zwei Cafés, zwei Stück Kuchen, ein Urteil. Bewertet wird von 1 bis 10." },
+    { c: "art", r: 0, z: "a", t: "Playlist-Duell", d: "Jeder wählt zehn Songs, die zu euch passen, und nennt keine Gründe. Der andere rät, warum." },
+    { c: "out", r: 0, z: "t", t: "Waldrunde mit Foto-Aufgaben", d: "Ihr denkt euch gegenseitig fünf Motive aus, die der andere im Wald fotografieren muss." },
+    { c: "in", r: 0, z: "m", t: "Frühstück im Bett", d: "Handys aus, Tablett voll. Es muss nicht schön aussehen." },
+    { c: "out", r: 0, s: "W", z: "t", t: "Schneespaziergang", d: "Eine lange Runde durch frischen Schnee. Ein Schneemann ist Pflicht." },
+    { c: "art", r: 0, m: [10], z: "ta", t: "Kürbisse schnitzen", d: "Jeder schnitzt ein Gesicht für den anderen. Kerze rein, Licht aus, Foto machen." },
+    { c: "eat", r: 0, m: [11, 12], z: "a", t: "Weihnachtsmarkt-Runde", d: "Glühwein oder Kinderpunsch, etwas Fettiges und ein kleines Geschenk für den anderen unter fünf Euro." },
+
+    { c: "in", r: 1, s: "FHW", z: "ta", t: "Therme oder Sauna-Tag", d: "Ein ganzer Nachmittag in der Therme. Handy im Spind, Bademantel an." },
+    { c: "eat", r: 1, z: "a", t: "Sushi-Abend selbstgemacht", d: "Reis, Algen, Füllungen und zwei Bambusmatten. Wer die schönere Rolle hat, sucht das Getränk aus." },
+    { c: "out", r: 1, s: "FSH", z: "mt", t: "Wanderung mit Gipfelbrotzeit", d: "Ein Gipfel oder Aussichtspunkt, Brotzeit im Rucksack, zurück über einen anderen Weg." },
+    { c: "art", r: 1, z: "ta", t: "Töpfern zu zweit", d: "Jeder töpfert etwas für den anderen: eine Tasse, eine Schale oder das, was daraus wird." },
+    { c: "eat", r: 1, z: "a", t: "Kerzenlicht-Dinner zu Hause", d: "Dresscode schick, Tisch richtig gedeckt, Musik leise. Einer kocht, der andere bedient, beim nächsten Mal getauscht." },
+    { c: "spicy", r: 1, z: "an", t: "Strip-Kartenspiel", d: "Mau-Mau, Poker oder was ihr wollt. Wer eine Runde verliert, zieht ein Kleidungsstück aus." },
+    { c: "spicy", r: 1, z: "a", t: "Blinde Verkostung", d: "Augenbinde auf, der andere füttert: Schokolade, Früchte, Käse, etwas Scharfes. Raten ist Pflicht." },
+    { c: "out", r: 1, s: "FSH", z: "t", t: "Radtour mit Ziel", d: "Etwa zwanzig Kilometer, am Ende wartet ein See, ein Biergarten oder eine Eisdiele." },
+    { c: "in", r: 1, z: "ta", t: "Bowling, Klettern oder Minigolf", d: "Ihr entscheidet vor Ort. Wer verliert, erfüllt dem Gewinner einen kleinen Wunsch." },
+    { c: "art", r: 1, s: "FSH", z: "t", t: "Gegenseitiges Fotoshooting", d: "Eine Stunde, ein Ort. Jeder fotografiert den anderen so, wie er ihn sieht." },
+    { c: "eat", r: 1, z: "a", t: "Dinner an drei Orten", d: "Vorspeise hier, Hauptgang dort, Dessert woanders. Dazwischen geht ihr zu Fuß." },
+    { c: "in", r: 1, z: "a", t: "Kneipenquiz", d: "Ein Quizabend in einer Bar. Ihr zwei gegen den Rest des Raums." },
+    { c: "out", r: 1, s: "S", z: "ta", t: "Badesee bis zum Abend", d: "Schwimmen, dösen, Handtuch auf der Wiese und bleiben, bis es dunkel wird." },
+    { c: "out", r: 1, s: "FSH", z: "an", t: "Lagerfeuer mit Stockbrot", d: "Eine erlaubte Feuerstelle, Stockbrot, Marshmallows und keine Eile." },
+    { c: "spicy", r: 1, z: "n", t: "Würfelspiel für Erwachsene", d: "Ein Würfel für die Aktion, einer für die Stelle. Die Aktionen schreibt ihr vorher gemeinsam auf." },
+    { c: "art", r: 1, z: "a", t: "Fotobuch-Abend", d: "Ein Stapel Bilder aus neun Monaten, ein Album, Kleber. Zu jedem Bild ein Satz." },
+    { c: "out", r: 1, s: "FSH", z: "mt", t: "Flohmarkt mit Budget", d: "Jeder bekommt zehn Euro und sucht etwas für den anderen." },
+
+    { c: "out", r: 2, t: "Wochenende in einer fremden Stadt", d: "Zwei Nächte in einer Stadt, in der ihr beide noch nie wart. Keine Liste, nur treiben lassen." },
+    { c: "spicy", r: 2, z: "tan", t: "Hotelnacht ohne Anlass", d: "Ein Zimmer in der Nachbarstadt, Zimmerservice, nichts im Plan." },
+    { c: "out", r: 2, s: "FSH", z: "t", t: "Rundflug", d: "Einmal von oben sehen, wo ihr wohnt. Im Kleinflugzeug oder im Segelflieger." },
+    { c: "eat", r: 2, z: "a", t: "Feines Restaurant", d: "Ein Menü mit mehreren Gängen. Einer reserviert, der andere erfährt den Namen erst vor der Tür." },
+    { c: "spicy", r: 2, z: "t", t: "Paar-Wellness mit Massage", d: "Sauna, Pool und Paarmassage. Danach müsst ihr nichts mehr." },
+    { c: "out", r: 2, s: "W", z: "mt", t: "Skitag oder Rodelberg", d: "Früh los, Piste oder Rodelbahn, danach Kaiserschmarrn." },
+    { c: "out", r: 2, s: "S", z: "a", t: "Open-Air-Konzert", d: "Ein Konzert unter freiem Himmel. Decke mitnehmen, früh da sein." },
+    { c: "out", r: 2, s: "S", z: "t", t: "Paddeltour", d: "Ein Fluss, ein Boot, ein Picknick in der Mitte." },
+    { c: "out", r: 2, z: "a", t: "Date mit Augenbinde", d: "Einer plant alles, der andere sitzt mit Augenbinde im Auto. Das Ziel bleibt bis zur Ankunft geheim." },
+    { c: "spicy", r: 2, z: "n", t: "Die lange Nacht", d: "Kerzen, Playlist, Öl und kein Handy bis zum Morgen." },
+    { c: "art", r: 2, z: "a", t: "Zeitkapsel", d: "Jeder schreibt einen Brief an euch in einem Jahr und legt einen Gegenstand dazu. Alles in eine Box, Datum drauf." },
+    { c: "in", r: 2, z: "a", t: "Theater, Musical oder Comedy", d: "Ein Abend mit Eintrittskarte und Dresscode: etwas, das du lange nicht getragen hast." },
+    { c: "art", r: 2, z: "t", t: "Ein Bild zu zweit", d: "Eine Leinwand, abwechselnd zehn Minuten pro Person, ohne ein Wort zu reden." },
+    { c: "eat", r: 2, z: "a", t: "Tasting zu zweit", d: "Wein, Whisky oder Schokolade: fünf Sorten, Notizzettel, ein ehrliches Urteil. Die Siegerflasche kommt mit nach Hause." },
+
+    { c: "out", r: 3, s: "FSH", z: "m", t: "Ballonfahrt bei Sonnenaufgang", d: "Früh aufstehen, über die Landschaft gleiten, danach Frühstück mit Sekt." },
+    { c: "out", r: 3, t: "Kurztrip ins Ausland", d: "Drei Tage in einer Stadt, die ihr beide nicht kennt. Hinflug oder Zugfahrt, keine Termine." },
+    { c: "out", r: 3, t: "Reise ins Blaue", d: "Einer packt für beide. Das Ziel erfährt der andere erst am Bahnsteig." },
+    { c: "spicy", r: 3, s: "HW", t: "Hütte mit Kamin und Whirlpool", d: "Zwei Nächte weit weg von allem. Holz im Ofen, Dampf im Wasser, keine Pläne." },
+    { c: "out", r: 3, s: "FSH", z: "t", t: "Tandem-Fallschirmsprung", d: "Ihr springt beide, am selben Tag. Wer zuerst nervös wird, zahlt das Abendessen." },
+    { c: "out", r: 3, s: "FSH", z: "an", t: "Nacht im Baumhaus", d: "Eine Nacht in den Wipfeln, am Morgen ein Frühstückskorb an der Seilwinde." },
+    { c: "art", r: 3, z: "a", t: "Neun Briefe", d: "Jeder schreibt neun Dinge auf, die er in neun Monaten am anderen gelernt oder lieben gelernt hat. Dann lest ihr vor." },
+    { c: "in", r: 3, t: "Ein Tag, der dir gehört", d: "Du bestimmst alles: Frühstück, Programm, Essen, Musik. Der andere sagt den ganzen Tag nur Ja." },
+    { c: "eat", r: 3, z: "a", t: "Sterne-Menü", d: "Ein Abend in einem Sternerestaurant, mit allem, was dazugehört." }
+  ];
+  var DATES = RAW.map(function (x, i) { x.id = i + 1; return x; });
+
+  var MON = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  var SEASON = { F: "Frühling", S: "Sommer", H: "Herbst", W: "Winter" };
+  var SLOT = { m: "morgens", t: "tagsüber", a: "abends", n: "nachts" };
+  var CAT = { out: "Draußen", "in": "Drinnen", eat: "Essen", spicy: "Spicy", art: "Kreativ" };
+  var RAR = [
+    { n: "Gewöhnlich", w: 46, g: "◆" },
+    { n: "Selten", w: 30, g: "◆◆" },
+    { n: "Episch", w: 17, g: "◆◆◆" },
+    { n: "Legendär", w: 7, g: "◆◆◆◆" }
+  ];
+
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function byId(id) { for (var i = 0; i < DATES.length; i++) { if (DATES[i].id === id) return DATES[i]; } return null; }
+  function labels(str, map) { return str.split("").map(function (k) { return map[k]; }).join(" · "); }
+
+  var reduce = false;
+  try { reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+
+  /* Speicher: nur im eigenen Browser. Fällt er aus, läuft die Seite trotzdem. */
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var o = JSON.parse(raw);
+        if (o && Array.isArray(o.pulls)) return o;
+      }
+    } catch (e) {}
+    return { pulls: [] };
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var state = load();
+  state.pulls = state.pulls.filter(function (p) { return p && byId(p.id); });
+
+  function season(d) {
+    var m = d.getMonth() + 1;
+    return (m === 12 || m <= 2) ? "W" : m <= 5 ? "F" : m <= 8 ? "S" : "H";
+  }
+  function slot(d) {
+    var h = d.getHours();
+    return (h >= 5 && h < 11) ? "m" : (h >= 11 && h < 17) ? "t" : (h >= 17 && h < 22) ? "a" : "n";
+  }
+  function fits(x, now) {
+    if (x.m && x.m.indexOf(now.getMonth() + 1) < 0) return false;
+    if (x.s && x.s.indexOf(season(now)) < 0) return false;
+    return true;
+  }
+  function wpick(arr, w) {
+    var t = w.reduce(function (a, b) { return a + b; }, 0), r = Math.random() * t;
+    for (var i = 0; i < arr.length; i++) { if (r < w[i]) return arr[i]; r -= w[i]; }
+    return arr[arr.length - 1];
+  }
+  /* Ziehung: erst Jahreszeit und Monat als Filter, dann Seltenheit würfeln,
+     dann innerhalb der Stufe Karten bevorzugen, die zur Tageszeit passen. */
+  function pick(cat) {
+    var now = new Date(), sl = slot(now);
+    var seen = {};
+    state.pulls.forEach(function (p) { seen[p.id] = true; });
+    var pool = DATES.filter(function (x) { return fits(x, now) && (cat === "all" || x.c === cat); });
+    if (!pool.length) pool = DATES.filter(function (x) { return fits(x, now); });
+    if (!pool.length) pool = DATES.slice();
+    var fresh = pool.filter(function (x) { return !seen[x.id]; });
+    if (fresh.length) pool = fresh;
+    var avail = [0, 1, 2, 3].filter(function (r) { return pool.some(function (x) { return x.r === r; }); });
+    var r = wpick(avail, avail.map(function (k) { return RAR[k].w; }));
+    var cand = pool.filter(function (x) { return x.r === r; });
+    var w = cand.map(function (x) { return !x.z ? 2 : x.z.indexOf(sl) >= 0 ? 4 : 1; });
+    return wpick(cand, w);
+  }
+
+  function unlockAt(ts) {
+    var d = new Date(ts);
+    d.setDate(d.getDate() + COOLDOWN_DAYS);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+  function lastPull() { return state.pulls[state.pulls.length - 1] || null; }
+  function isLocked() { var l = lastPull(); return !!l && Date.now() < unlockAt(l.ts); }
+  function fmtLong(d) { return d.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" }); }
+  function fmtShort(ts) { return new Date(ts).toLocaleDateString("de-DE", { day: "numeric", month: "short" }); }
+
+  function seasonText(x) {
+    if (x.m) return "nur " + x.m.map(function (i) { return MON[i - 1]; }).join(" · ");
+    return x.s ? labels(x.s, SEASON) : "ganzjährig";
+  }
+  function timeText(x) { return x.z ? labels(x.z, SLOT) : "jederzeit"; }
+
+  var card = $("card"), front = $("front"), pullBtn = $("pull"), statusEl = $("status");
+  var chipsWrap = $("chipsWrap"), chipsEl = $("chips"), histWrap = $("histWrap"), histEl = $("hist");
+  var cat = "all", busy = false, openIds = {};
+
+  function setFront(x) {
+    front.className = "face front r" + x.r;
+    front.innerHTML =
+      '<div class="top"><span class="rar">' + RAR[x.r].g + " " + RAR[x.r].n + '</span><span class="num">Nr. ' + pad(x.id) + "/" + pad(DATES.length) + "</span></div>" +
+      '<span class="cat">' + CAT[x.c] + "</span>" +
+      '<h2 class="title">' + x.t + "</h2>" +
+      '<p class="desc">' + x.d + "</p>" +
+      '<dl class="meta"><div><dt>Jahreszeit</dt><dd>' + seasonText(x) + "</dd></div><div><dt>Beste Zeit</dt><dd>" + timeText(x) + "</dd></div></dl>";
+  }
+
+  function renderCtx() {
+    var now = new Date();
+    $("ctx").textContent = SEASON[season(now)] + " · " + now.toLocaleDateString("de-DE", { weekday: "long" }) + ", " + SLOT[slot(now)];
+  }
+
+  function renderChips() {
+    var list = [["all", "Alles"], ["out", "Draußen"], ["in", "Drinnen"], ["eat", "Essen"], ["spicy", "Spicy"], ["art", "Kreativ"]];
+    chipsEl.innerHTML = list.map(function (c) {
+      return '<button type="button" class="chip" data-cat="' + c[0] + '" aria-pressed="' + (cat === c[0]) + '">' + c[1] + "</button>";
+    }).join("");
+  }
+  chipsEl.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-cat]");
+    if (!b) return;
+    cat = b.getAttribute("data-cat");
+    renderChips();
+  });
+
+  function renderOdds() {
+    $("odds").innerHTML = RAR.map(function (r, i) {
+      return '<div class="g' + i + '"><span>' + r.g + " " + r.n + "</span><b>" + r.w + " %</b></div>";
+    }).join("");
+  }
+
+  function renderStatus() {
+    var last = lastPull(), locked = isLocked();
+    chipsWrap.hidden = locked;
+    if (locked) {
+      var x = byId(last.id), next = unlockAt(last.ts);
+      var left = Math.max(1, Math.ceil((next - Date.now()) / DAY));
+      pullBtn.disabled = true;
+      pullBtn.textContent = "Nächste Karte ab " + fmtLong(new Date(next));
+      statusEl.innerHTML = "<p>Noch " + left + (left === 1 ? " Tag" : " Tage") + ". Bis dahin: " + x.t + ".</p>" +
+        '<button type="button" class="ghost" data-done="' + (state.pulls.length - 1) + '">' + (last.done ? "Erledigt. Rückgängig" : "Als erledigt markieren") + "</button>";
+    } else {
+      pullBtn.disabled = false;
+      pullBtn.textContent = state.pulls.length ? "Neue Karte ziehen" : "Karte ziehen";
+      statusEl.innerHTML = "<p>" + (state.pulls.length ? "Deine nächste Karte ist bereit." : "Alle zwei Wochen gibt es eine neue Karte. Tipp auf die Karte oder den Knopf.") + "</p>";
+    }
+  }
+
+  function renderHist() {
+    var items = state.pulls.map(function (p, i) { return { p: p, i: i, x: byId(p.id) }; }).reverse();
+    histWrap.hidden = !items.length;
+    histEl.innerHTML = items.map(function (o) {
+      var x = o.x, p = o.p;
+      return '<details data-i="' + o.i + '"' + (openIds[o.i] ? " open" : "") + "><summary>" +
+        '<span class="hnum">' + pad(x.id) + "</span>" +
+        '<span class="htitle">' + x.t + (p.done ? ' <span class="ok">· erledigt</span>' : "") + "</span>" +
+        '<span class="hr r' + x.r + '">' + RAR[x.r].g + "</span></summary>" +
+        '<div class="hbody"><p>' + x.d + "</p>" +
+        '<p class="hmeta">' + RAR[x.r].n + " · " + CAT[x.c] + " · gezogen am " + fmtShort(p.ts) + "</p>" +
+        '<button type="button" class="ghost" data-done="' + o.i + '">' + (p.done ? "Als offen markieren" : "Als erledigt markieren") + "</button></div></details>";
+    }).join("");
+  }
+  histEl.addEventListener("toggle", function (e) {
+    var d = e.target, i = d.getAttribute && d.getAttribute("data-i");
+    if (i === null || i === undefined) return;
+    if (d.open) openIds[i] = true; else delete openIds[i];
+  }, true);
+
+  function toggleDone(e) {
+    var b = e.target.closest("[data-done]");
+    if (!b) return;
+    var i = parseInt(b.getAttribute("data-done"), 10);
+    if (!state.pulls[i]) return;
+    state.pulls[i].done = !state.pulls[i].done;
+    save();
+    renderStatus();
+    renderHist();
+  }
+  statusEl.addEventListener("click", toggleDone);
+  histEl.addEventListener("click", toggleDone);
+
+  function finish() { busy = false; renderStatus(); renderHist(); }
+
+  function pull() {
+    if (busy || isLocked()) return;
+    busy = true;
+    pullBtn.disabled = true;
+    var x = pick(cat);
+    state.pulls.push({ id: x.id, ts: Date.now(), done: false });
+    save();
+    card.classList.remove("flipped");
+    setFront(x);
+    $("announce").textContent = RAR[x.r].n + ": " + x.t + ". " + x.d;
+    if (reduce) {
+      card.classList.add("flipped");
+      finish();
+    } else {
+      card.classList.add("shake");
+      setTimeout(function () { card.classList.remove("shake"); card.classList.add("flipped"); }, 650);
+      setTimeout(finish, 1700);
+    }
+  }
+  pullBtn.addEventListener("click", pull);
+  card.addEventListener("click", function () { if (!card.classList.contains("flipped")) pull(); });
+
+  var armed = false, armTimer = null, resetBtn = $("reset");
+  resetBtn.addEventListener("click", function () {
+    if (!armed) {
+      armed = true;
+      resetBtn.textContent = "Alles löschen? Nochmal tippen";
+      armTimer = setTimeout(function () { armed = false; resetBtn.textContent = "Neu starten"; }, 4000);
+      return;
+    }
+    clearTimeout(armTimer);
+    armed = false;
+    resetBtn.textContent = "Neu starten";
+    state = { pulls: [] };
+    openIds = {};
+    save();
+    card.classList.remove("flipped");
+    renderStatus();
+    renderHist();
+  });
+
+  /* Start: war schon gezogen und die Sperre läuft noch, zeigt die Karte ihre Vorderseite. */
+  renderCtx();
+  renderChips();
+  renderOdds();
+  if (isLocked()) {
+    setFront(byId(lastPull().id));
+    card.style.transition = "none";
+    card.classList.add("flipped");
+    void card.offsetWidth;
+    card.style.transition = "";
+  }
+  renderStatus();
+  renderHist();
+})();
+</script>
+</body>
+</html>
